@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Environment — never commit secrets
+.env
+
+# SQLite databases and WAL files
+*.db
+*.db-shm
+*.db-wal
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+
+# Logs
+logs/
+*.log

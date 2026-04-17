@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analytics Hub</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); }
+    .hub { text-align: center; max-width: 760px; width: 100%; padding: 40px 24px; }
+    .hub-title { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 6px; }
+    .hub-sub { color: var(--text-muted); font-size: 14px; margin-bottom: 48px; }
+    .report-cards { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; }
+    .report-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px 28px;
+      width: 300px;
+      text-align: left;
+      text-decoration: none;
+      color: var(--text);
+      transition: border-color 0.15s, box-shadow 0.15s;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .report-card:hover { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent)22; }
+    .report-card .card-icon { font-size: 28px; }
+    .report-card .card-title { font-size: 16px; font-weight: 700; }
+    .report-card .card-desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+    .report-card .card-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+    .report-card .tag {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .powered { margin-top: 48px; font-size: 12px; color: var(--text-muted); }
+    .shutdown-wrap { margin-top: 32px; }
+    .btn-shutdown {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 12px;
+      padding: 5px 14px;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-shutdown:hover { border-color: var(--danger); color: var(--danger); }
+  </style>
+</head>
+<body>
+<div class="hub">
+  <div class="hub-title"><img src="/insights/assets/logo.svg" alt="Ahrefs" style="width:28px;height:28px;vertical-align:middle;margin-right:8px"> Analytics Hub</div>
+  <div class="hub-sub">Select a report to open</div>
+  <div class="report-cards">
+<a href="/insights" class="report-card">
+      <div class="card-icon">✨</div>
+      <div class="card-title">Insights Report</div>
+      <div class="card-desc">Performance and opportunity analysis across AI and organic channels. Drill into SoV, impressions, citations, and content gaps.</div>
+      <div class="card-tags">
+        <span class="tag">Performance</span>
+        <span class="tag">Opportunities</span>
+        <span class="tag">Starred</span>
+      </div>
+    </a>
+  </div>
+  <div class="powered">Powered by Ahrefs API v3</div>
+  <div class="shutdown-wrap">
+    <button class="btn-shutdown" id="btn-shutdown">⏻ Shut down server</button>
+  </div>
+</div>
+<script>
+  document.getElementById('btn-shutdown').addEventListener('click', async () => {
+    if (!confirm('Shut down the server?')) return;
+    await fetch('/api/shutdown', { method: 'POST' }).catch(() => {});
+    document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#7c80a0;font-family:sans-serif">Server stopped.</div>';
+  });
+</script>
+</body>
+</html>

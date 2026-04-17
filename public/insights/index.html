@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Insights Report</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/insights/css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div id="app">
+
+  <!-- Sidebar -->
+  <aside id="sidebar">
+    <a href="/" class="logo-link">
+      <div class="logo"><img src="/insights/assets/logo.svg" alt="Ahrefs" class="logo-img"> Insights</div>
+    </a>
+    <nav>
+      <a href="#performance" data-page="performance" class="active">
+        <span class="icon">📈</span> Performance
+      </a>
+      <a href="#opportunities" data-page="opportunities">
+        <span class="icon">🔍</span> Opportunities
+      </a>
+      <a href="#starred" data-page="starred">
+        <span class="icon">⭐</span> Starred
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn sm" id="btn-settings">⚙ Settings</button>
+      <div style="margin-top:8px;font-size:11px;color:var(--text-muted)">Ahrefs API v3</div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div id="main">
+    <!-- Topbar -->
+    <div id="topbar">
+      <h1 id="page-title">Performance</h1>
+    </div>
+
+    <!-- Date bar -->
+    <div id="date-bar">
+      <span class="date-bar-label">Period</span>
+      <input type="date" id="dp-primary">
+      <span class="date-bar-sep">vs</span>
+      <input type="date" id="dp-compare">
+      <button class="btn sm primary" id="btn-apply-dates">Apply</button>
+    </div>
+
+    <!-- Content -->
+    <div id="content"></div>
+  </div>
+
+</div>
+
+<!-- Settings panel (slide-in) -->
+<div id="settings-overlay" class="hidden"></div>
+<div id="settings-panel" class="hidden">
+  <div class="settings-header">
+    <span>⚙ Settings</span>
+    <button id="btn-close-settings">✕</button>
+  </div>
+  <div id="settings-body"></div>
+</div>
+
+<script type="module" src="/insights/js/app.js"></script>
+</body>
+</html>

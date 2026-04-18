@@ -38,9 +38,15 @@ AHREFS_API_KEY=your_api_key_here
 PORT=3000
 TIMEOUT_MS=30000
 DB_PATH=./analytics.db
-```
 
-> The API key can also be set (or changed) from the Settings panel in the UI after first run.
+DEFAULT_PROJECT_ID=12345
+DEFAULT_REPORT_ID=67890
+DEFAULT_DOMAIN=example.com
+DEFAULT_BRAND_NAME=Example Corp
+DEFAULT_COUNTRY=us
+DEFAULT_COMPETITORS_DOMAINS=competitor1.com,competitor2.com
+CRON_SCHEDULE=0 2 * * *
+```
 
 ### 3. Start the server
 
@@ -60,26 +66,26 @@ npm run dev
 
 ## Environment Variables
 
+All configuration lives in `.env`. There is no in-app settings editor for global values — restart the server after changing `.env`.
+
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `AHREFS_API_KEY` | Yes | — | Ahrefs API v3 key |
 | `PORT` | No | `3000` | HTTP server port |
 | `TIMEOUT_MS` | No | `30000` | API request timeout in milliseconds |
 | `DB_PATH` | No | `./analytics.db` | Path to the SQLite database file |
+| `DEFAULT_PROJECT_ID` | No | — | Ahrefs project ID for GSC and Rank Tracker widgets |
+| `DEFAULT_WEB_ANALYTICS_PROJECT_ID` | No | — | Ahrefs project ID for Web Analytics widgets (falls back to `DEFAULT_PROJECT_ID` if unset) |
+| `DEFAULT_REPORT_ID` | No | — | Brand Radar report ID |
+| `DEFAULT_DOMAIN` | No | — | Your domain (used by Site Explorer and competitor filtering) |
+| `DEFAULT_BRAND_NAME` | No | — | Brand name for filtering branded keywords in GSC |
+| `DEFAULT_COUNTRY` | No | `us` | Country code for SERP lookups (ISO 2-letter) |
+| `DEFAULT_COMPETITORS_DOMAINS` | No | — | Comma-separated competitor domains to exclude from tables |
+| `CRON_SCHEDULE` | No | `0 2 * * *` | Cron expression for scheduled data refresh |
 
-## Configuration (via Settings UI)
+## Per-Widget Overrides (via Settings UI)
 
-Open the Settings panel from the dashboard to configure:
-
-| Setting | Description |
-|---|---|
-| Default Project ID | Rank Tracker / GSC / Web Analytics project ID |
-| Default Report ID | Brand Radar report ID |
-| Default Domain | Site Explorer target domain |
-| Brand Name | Used to filter branded keywords in GSC |
-| Default Country | Two-letter country code (e.g. `us`) |
-| Competitor Domains | Comma-separated list of competitor domains |
-| Cron Schedule | Auto-refresh schedule (cron expression, e.g. `0 2 * * *`) |
+Open the Settings panel from the dashboard to set per-widget `project_id`, `report_id`, or `brand` overrides that take precedence over the `.env` defaults for that specific widget.
 
 ## Deploying to a Server
 

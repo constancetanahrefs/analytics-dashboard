@@ -213,14 +213,41 @@ async function loadWidgetData(id, card, uiMeta, appState, dateOverrides, forceRe
   } catch (err) {
     card._data = null;
     const isTimeout = err.isTimeout;
+    const isNetworkErr = !err.httpCode && !isTimeout;
     meta.innerHTML = `<span class="badge ${isTimeout ? 'timeout' : 'error'}">${isTimeout ? 'Timeout' : 'Error'}</span>`;
-    body.innerHTML = `
-      <div class="widget-error">
-        <span>${isTimeout ? '⏱ Request timed out' : '⚠ ' + (err.message || 'Unknown error')}</span>
-        ${err.httpCode ? `<span style="font-size:11px;color:var(--text-muted)">HTTP ${err.httpCode}</span>` : ''}
-        <button class="btn sm" style="margin-top:8px" onclick="this.closest('.widget-card').querySelector('.btn-refresh').click()">Retry</button>
-      </div>
-    `;
+
+    let errMsg, errSub;
+    if (isTimeout) {
+      errMsg = 'No response from Ahrefs API';
+      errSub = 'The request timed out. Try increasing TIMEOUT_MS in your .env file, or click Retry.';
+    } else if (isNetworkErr) {
+      errMsg = 'Could not reach Ahrefs API';
+      errSub = 'Check your server\'s internet connection and API key, then retry.';
+    } else {
+      errMsg = err.message || 'Ahrefs API error';
+      errSub = err.httpCode ? `HTTP ${err.httpCode} — verify your API key and configured IDs in .env.` : '';
+    }
+
+    body.innerHTML = '';
+    const errEl = document.createElement('div');
+    errEl.className = 'widget-error';
+    const m = document.createElement('span');
+    m.className = 'error-msg';
+    m.textContent = `⚠ ${errMsg}`;
+    errEl.appendChild(m);
+    if (errSub) {
+      const s = document.createElement('span');
+      s.className = 'error-sub';
+      s.textContent = errSub;
+      errEl.appendChild(s);
+    }
+    const retryBtn = document.createElement('button');
+    retryBtn.className = 'btn sm';
+    retryBtn.style.marginTop = '8px';
+    retryBtn.textContent = 'Retry';
+    retryBtn.addEventListener('click', () => card.querySelector('.btn-refresh').click());
+    errEl.appendChild(retryBtn);
+    body.appendChild(errEl);
   }
 }
 
@@ -228,7 +255,7 @@ async function loadWidgetData(id, card, uiMeta, appState, dateOverrides, forceRe
 function renderBody(id, card, uiMeta, data, appState) {
   const body = card.querySelector('.widget-body');
   if (!data) {
-    body.innerHTML = '<div class="widget-empty">No data</div>';
+    body.appendChild(noDataEl('No data received', 'The server returned an empty response. Try refreshing.'));
     return;
   }
 
@@ -298,19 +325,53 @@ function pagination(rows, container, renderRows) {
   draw();
 }
 
-function emptyEl() {
+/**
+ * Empty-state element with a required short message and an optional explanation.
+ * Use the right message for each scenario:
+ *   api_empty   → API responded but returned no records
+ *   filter_empty → Records existed but filtering removed them all
+ *   calc_empty  → Calculation / derivation produced no results
+ */
+function noDataEl(msg, sub = '') {
   const d = document.createElement('div');
   d.className = 'widget-empty';
-  d.textContent = 'No data available';
+  const msgEl = document.createElement('span');
+  msgEl.className = 'empty-msg';
+  msgEl.textContent = msg;
+  d.appendChild(msgEl);
+  if (sub) {
+    const subEl = document.createElement('span');
+    subEl.className = 'empty-sub';
+    subEl.textContent = sub;
+    d.appendChild(subEl);
+  }
   return d;
 }
 
+/** @deprecated Use noDataEl() with a specific message instead. */
+function emptyEl() {
+  return noDataEl('No data available');
+}
+
+/**
+ * Error-state element. Covers three scenarios:
+ *   - timeout: isTimeout=true
+ *   - API/HTTP error: httpCode present
+ *   - Network failure: no httpCode, not timeout
+ */
 function errorEl(message, httpCode) {
   const d = document.createElement('div');
   d.className = 'widget-error';
-  const span = document.createElement('span');
-  span.textContent = `⚠ ${message}${httpCode ? ` (HTTP ${httpCode})` : ''}`;
-  d.appendChild(span);
+  const msgEl = document.createElement('span');
+  msgEl.className = 'error-msg';
+  msgEl.textContent = `⚠ ${message}`;
+  d.appendChild(msgEl);
+  if (httpCode) {
+    const subEl = document.createElement('span');
+    subEl.className = 'error-sub';
+    subEl.textContent = `HTTP ${httpCode}`;
+    d.appendChild(subEl);
+  }
   return d;
 }
 
@@ -408,6 +469,14 @@ function renderMultiLine(id, body, data) {
 
   // ── Shape 3: flat points grouped by source (sources-chart, p6-clicks-ai) ──
   if (id === 'p6-clicks-ai' && data.points && Array.isArray(data.points)) {
+    if (data.points.length === 0) {
+      body.innerHTML = '';
+      body.appendChild(noDataEl(
+        'No AI traffic data returned',
+        'Ahrefs returned no web analytics data for the LLM channel in the selected period. Check your DEFAULT_WEB_ANALYTICS_PROJECT_ID in .env.'
+      ));
+      return;
+    }
     const palette = ['#009DFF', '#FF8800', '#00cfff', '#ff4d00', '#00c87a', '#FFD000', '#a78bfa', '#f87171'];
     const sourceMap = {}; // source → { date → visitors }
     const dateSet = new Set();
@@ -490,9 +559,22 @@ function renderMultiLine(id, body, data) {
     const errs = collectPlatformErrors(data, PLATFORMS);
 
     if (datasets.length === 0) {
-      // All platforms failed — show error(s) instead of "No data"
       body.innerHTML = '';
-      body.appendChild(errorEl(errs.length ? errs.map(e => `${e.platform}: ${e.error}`).join(' · ') : 'No data available'));
+      if (errs.length) {
+        body.appendChild(errorEl(
+          'Ahrefs API errors across all platforms',
+          null
+        ));
+        const subEl = document.createElement('span');
+        subEl.className = 'error-sub';
+        subEl.textContent = errs.map(e => `${e.platform}: ${e.error}`).join(' · ');
+        body.querySelector('.widget-error').appendChild(subEl);
+      } else {
+        body.appendChild(noDataEl(
+          'No data from Ahrefs for any platform',
+          'All AI platforms returned empty results. Check your Brand Radar report ID and brand name in .env.'
+        ));
+      }
       return;
     }
 
@@ -505,7 +587,11 @@ function renderMultiLine(id, body, data) {
   }
 
   if (!labels || labels.length === 0 || datasets.length === 0) {
-    body.innerHTML = '<div class="widget-empty">No data available</div>';
+    body.innerHTML = '';
+    body.appendChild(noDataEl(
+      'No data returned from Ahrefs',
+      'The API responded but returned no time-series data for the selected date range.'
+    ));
     return;
   }
 
@@ -517,7 +603,14 @@ function renderMultiLine(id, body, data) {
 function renderSingleLine(id, body, data) {
   if (data.error) { body.appendChild(errorEl(data.error, data.httpCode)); return; }
   const metrics = data.metrics || [];
-  if (metrics.length === 0) { body.innerHTML = '<div class="widget-empty">No data</div>'; return; }
+  if (metrics.length === 0) {
+    body.innerHTML = '';
+    body.appendChild(noDataEl(
+      'No impressions data returned',
+      'Ahrefs returned no GSC performance history for this project and date range. Check your DEFAULT_PROJECT_ID in .env.'
+    ));
+    return;
+  }
 
   body.innerHTML = '<div class="chart-wrap" style="height:220px"></div>';
   const canvas = document.createElement('canvas');
@@ -532,7 +625,14 @@ function renderSingleLine(id, body, data) {
 function renderStat(id, body, data) {
   if (data.error) { body.appendChild(errorEl(data.error, data.httpCode)); return; }
   const rows = data.rows || [];
-  if (rows.length === 0) { body.innerHTML = '<div class="widget-empty">No data</div>'; return; }
+  if (rows.length === 0) {
+    body.innerHTML = '';
+    body.appendChild(noDataEl(
+      'No Share of Voice data returned',
+      'Ahrefs returned no competitor stats for this project. Verify your DEFAULT_PROJECT_ID in .env.'
+    ));
+    return;
+  }
 
   const sorted = [...rows].sort((a, b) => (b.share_of_voice || 0) - (a.share_of_voice || 0));
 
@@ -568,7 +668,11 @@ async function renderLineAndTable(id, body, data, appState) {
   const metrics = data.metrics || [];
 
   if (metrics.length === 0) {
-    body.innerHTML = '<div class="widget-empty">No data</div>';
+    body.innerHTML = '';
+    body.appendChild(noDataEl(
+      'No clicks data returned',
+      'Ahrefs returned no GSC performance history for this project and date range. Check your DEFAULT_PROJECT_ID in .env.'
+    ));
     return;
   }
 
@@ -634,7 +738,10 @@ async function renderLineAndTable(id, body, data, appState) {
       const wrap = subfolderSection.querySelector('.subfolder-table-wrap');
       wrap.innerHTML = '';
       if (subfolders.length === 0) {
-        wrap.innerHTML = '<div class="widget-empty">No pages data</div>';
+        wrap.appendChild(noDataEl(
+          'No pages data returned',
+          'Ahrefs returned no GSC pages to build the subfolder breakdown.'
+        ));
       } else {
         const table = document.createElement('table');
         table.className = 'data-table';
@@ -673,7 +780,13 @@ function renderTabbedTable(id, body, data) {
   body.innerHTML = '';
   if (data.error) { body.appendChild(errorEl(data.error, data.httpCode)); return; }
   const pages = data.pages || [];
-  if (pages.length === 0) { body.appendChild(emptyEl()); return; }
+  if (pages.length === 0) {
+    body.appendChild(noDataEl(
+      'No pages returned from Ahrefs',
+      'Ahrefs returned no GSC page data for this project and date range. Check your DEFAULT_PROJECT_ID in .env.'
+    ));
+    return;
+  }
 
   const tabs = document.createElement('div');
   tabs.className = 'inner-tabs';
@@ -731,7 +844,7 @@ function renderTable(id, body, data, appState) {
     case 'o1-third-domains':  renderThirdDomainsTable(body, data, appState.settings); break;
     case 'o2-aio-gaps':       renderAioGapsTable(body, data); break;
     case 'o3-question-kw':
-    case 'o4-longtail-kw':    renderKeywordsTable(body, data); break;
+    case 'o4-longtail-kw':    renderKeywordsTable(body, data, id); break;
     case 'o5-paa':            renderSerpFeaturesTable(body, data, 'question'); break;
     case 'o6-discussions':    renderSerpFeaturesTable(body, data, 'discussion'); break;
     case 'o7-reddit-quora':   renderCitedPagesTable(body, data, true, ['reddit.com', 'quora.com']); break;
@@ -811,13 +924,35 @@ function mergePlatformDomains(data, excludeDomains = []) {
 }
 
 function renderCitedPagesTable(body, data, showDomainBadge, domainFilter = []) {
-  let { rows, errors } = mergePlatformPages(data);
-  if (domainFilter.length) {
-    rows = rows.filter(r => domainFilter.some(d => (r.url || '').includes(d)));
-  }
+  const { rows: rawRows, errors } = mergePlatformPages(data);
+  const rows = domainFilter.length
+    ? rawRows.filter(r => domainFilter.some(d => (r.url || '').includes(d)))
+    : rawRows;
   body.innerHTML = '';
   if (rows.length === 0) {
-    body.appendChild(errors.length ? errorEl(errors.map(e => `${e.platform}: ${e.error}`).join(' · ')) : emptyEl());
+    if (errors.length && rawRows.length === 0) {
+      // All platforms errored — no response
+      body.appendChild(errorEl(
+        'Ahrefs API errors across all platforms',
+        null
+      ));
+      const subEl = document.createElement('span');
+      subEl.className = 'error-sub';
+      subEl.textContent = errors.map(e => `${e.platform}: ${e.error}`).join(' · ');
+      body.querySelector('.widget-error').appendChild(subEl);
+    } else if (rawRows.length === 0) {
+      // API responded but no records at all
+      body.appendChild(noDataEl(
+        'No cited pages returned from Ahrefs',
+        'Ahrefs returned no cited pages for any AI platform. Check your Brand Radar report ID and brand name in .env.'
+      ));
+    } else {
+      // Had rows but domain filter removed them all
+      body.appendChild(noDataEl(
+        'No matching pages after domain filter',
+        `None of the ${rawRows.length} returned pages matched the required domains (${domainFilter.join(', ')}).`
+      ));
+    }
     return;
   }
 
@@ -857,10 +992,24 @@ function renderVideoPagesTable(body, data) {
   body.innerHTML = '';
   if (data.error) { body.appendChild(errorEl(data.error, data.httpCode)); return; }
   const VIDEO_DOMAINS = ['youtube.com', 'tiktok.com'];
-  const rows = (data.pages || [])
+  const allPages = data.pages || [];
+  const rows = allPages
     .filter(r => VIDEO_DOMAINS.some(d => (r.url || '').includes(d)))
     .sort((a, b) => (b.responses || 0) - (a.responses || 0));
-  if (rows.length === 0) { body.appendChild(emptyEl()); return; }
+  if (rows.length === 0) {
+    if (allPages.length === 0) {
+      body.appendChild(noDataEl(
+        'No cited pages returned from Ahrefs',
+        'Ahrefs returned no cited pages for any AI platform. Check your Brand Radar report ID and brand name in .env.'
+      ));
+    } else {
+      body.appendChild(noDataEl(
+        'No YouTube or TikTok citations found',
+        `None of the ${allPages.length} returned cited pages were from YouTube or TikTok.`
+      ));
+    }
+    return;
+  }
 
   const scroll = document.createElement('div');
   scroll.className = 'table-scroll';
@@ -897,13 +1046,26 @@ function renderThirdDomainsTable(body, data, settings) {
   // Flat combined response: { domains: [...] }
   body.innerHTML = '';
   if (data.error) { body.appendChild(errorEl(data.error, data.httpCode)); return; }
-  let rows = (data.domains || []);
-  if (excludeDomains.length) {
-    rows = rows.filter(r => !excludeDomains.some(d => d && r.domain?.includes(d)));
-  }
+  const allDomains = data.domains || [];
+  let rows = excludeDomains.length
+    ? allDomains.filter(r => !excludeDomains.some(d => d && r.domain?.includes(d)))
+    : allDomains;
   rows = rows.sort((a, b) => (b.responses || 0) - (a.responses || 0));
 
-  if (rows.length === 0) { body.appendChild(emptyEl()); return; }
+  if (rows.length === 0) {
+    if (allDomains.length === 0) {
+      body.appendChild(noDataEl(
+        'No cited domains returned from Ahrefs',
+        'Ahrefs returned no cited domain data. Check your Brand Radar report ID and brand name in .env.'
+      ));
+    } else {
+      body.appendChild(noDataEl(
+        'No third-party domains after filtering',
+        `All ${allDomains.length} returned domains matched your own domain or competitor exclusion list (DEFAULT_DOMAIN / DEFAULT_COMPETITORS_DOMAINS).`
+      ));
+    }
+    return;
+  }
 
   const scroll = document.createElement('div');
   scroll.className = 'table-scroll';
@@ -937,7 +1099,13 @@ function renderAioPagesTable(body, data) {
   body.innerHTML = '';
   if (data.error) { body.appendChild(errorEl(data.error, data.httpCode)); return; }
   const pages = data.pages || [];
-  if (pages.length === 0) { body.appendChild(emptyEl()); return; }
+  if (pages.length === 0) {
+    body.appendChild(noDataEl(
+      'No AI Overview pages found',
+      'None of your tracked keywords appear as citations in Google AI Overviews. This may be a plan limitation or no AIO features exist for tracked keywords.'
+    ));
+    return;
+  }
 
   const scroll = document.createElement('div');
   scroll.className = 'table-scroll';
@@ -964,7 +1132,13 @@ function renderAioGapsTable(body, data) {
   body.innerHTML = '';
   if (data.error) { body.appendChild(errorEl(data.error, data.httpCode)); return; }
   const urls = data.urls || [];
-  if (urls.length === 0) { body.appendChild(emptyEl()); return; }
+  if (urls.length === 0) {
+    body.appendChild(noDataEl(
+      'No AIO URLs found',
+      'No URLs were found in AI Overviews where your site is absent. Your site may already be cited, or no tracked keywords trigger AI Overviews.'
+    ));
+    return;
+  }
 
   const scroll = document.createElement('div');
   scroll.className = 'table-scroll';
@@ -988,11 +1162,24 @@ function renderAioGapsTable(body, data) {
   });
 }
 
-function renderKeywordsTable(body, data) {
+function renderKeywordsTable(body, data, id) {
   body.innerHTML = '';
   if (data.error) { body.appendChild(errorEl(data.error, data.httpCode)); return; }
   const keywords = data.keywords || [];
-  if (keywords.length === 0) { body.appendChild(emptyEl()); return; }
+  if (keywords.length === 0) {
+    if (id === 'o3-question-kw') {
+      body.appendChild(noDataEl(
+        'No question keywords found',
+        'Ahrefs returned no GSC keywords matching question patterns (who, what, why, where, how…) for this project and date range.'
+      ));
+    } else {
+      body.appendChild(noDataEl(
+        'No long-tail keywords found',
+        'No keywords with 5 or more words were found in the returned GSC data for this project and date range.'
+      ));
+    }
+    return;
+  }
 
   const scroll = document.createElement('div');
   scroll.className = 'table-scroll';
@@ -1027,13 +1214,26 @@ function renderSerpFeaturesTable(body, data, type) {
   if (data.error) { body.appendChild(errorEl(data.error, data.httpCode)); return; }
   const results = data.results || [];
   const rows = [];
+  const seenUrls = new Set();
   for (const r of results) {
     for (const item of (r.items || [])) {
-      rows.push({ keyword: r.keyword, position: r.position, title: item.title || '', url: item.url || '' });
+      const url = item.url || '';
+      if (url && seenUrls.has(url)) continue;
+      if (url) seenUrls.add(url);
+      rows.push({ keyword: r.keyword, position: r.position, title: item.title || '', url });
     }
   }
 
-  if (rows.length === 0) { body.appendChild(emptyEl()); return; }
+  if (rows.length === 0) {
+    const typeLabels = {
+      question:   ['No People Also Ask questions found',  'None of your tracked keywords triggered PAA boxes in the SERP.'],
+      discussion: ['No discussion results found',          'None of your tracked keywords triggered Discussion carousel results.'],
+      video:      ['No video results found',               'None of your tracked keywords triggered Video or Video Preview SERP features.']
+    };
+    const [msg, sub] = typeLabels[type] || ['No results found', 'No matching SERP features were found for tracked keywords.'];
+    body.appendChild(noDataEl(msg, sub));
+    return;
+  }
 
   const scroll = document.createElement('div');
   scroll.className = 'table-scroll';

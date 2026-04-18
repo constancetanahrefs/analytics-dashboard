@@ -1,9 +1,9 @@
 import { ahrefsGet } from '../client.js';
-import { getSetting } from '../../db/db.js';
 import { fetchPageTitles } from './site-explorer.js';
+import { config } from '../../config.js';
 
 function defaultProjectId(overrides) {
-  return overrides.project_id || getSetting('default_project_id');
+  return overrides.project_id || config.defaultProjectId;
 }
 
 function dateFrom(daysBack = 90) {
@@ -95,7 +95,7 @@ export const brandedKeywordsConfig = {
 
 export async function fetchBrandedKeywords(overrides = {}, widgetId) {
   const projectId = defaultProjectId(overrides);
-  const brandName = overrides.brand_name || getSetting('default_brand_name') || '';
+  const brandName = overrides.brand_name || config.defaultBrandName || '';
   const data = await fetchKeywords({ ...overrides, project_id: projectId }, widgetId);
   if (!brandName) return data;
   const lower = brandName.toLowerCase();
@@ -154,7 +154,7 @@ export async function fetchPages(overrides = {}, widgetId) {
   const data = await ahrefsGet('gsc/pages', params, widgetId);
 
   // Enrich with page titles from site-explorer/top-pages
-  const domain = overrides.domain || getSetting('default_domain');
+  const domain = overrides.domain || config.defaultDomain;
   const pages = data.pages || [];
   if (domain && pages.length) {
     try {
@@ -174,7 +174,7 @@ export const impressionsSplitConfig = {
 
 export async function fetchImpressionsSplit(overrides = {}, widgetId) {
   const projectId = defaultProjectId(overrides);
-  const brandName = overrides.brand_name || getSetting('default_brand_name') || '';
+  const brandName = overrides.brand_name || config.defaultBrandName || '';
   const data = await fetchKeywords({ ...overrides, project_id: projectId, limit: 1000 }, widgetId);
   const lower = brandName.toLowerCase();
   let branded = 0, unbranded = 0;

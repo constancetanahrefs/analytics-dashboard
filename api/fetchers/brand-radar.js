@@ -1,5 +1,5 @@
 import { ahrefsGet } from '../client.js';
-import { getSetting } from '../../db/db.js';
+import { config } from '../../config.js';
 
 const PLATFORMS = ['chatgpt', 'gemini', 'perplexity', 'copilot'];
 
@@ -15,8 +15,8 @@ function daysAgoDate(n) {
  * - `brand` read from settings (required by API; at least one of brand/competitors/market/where must be set)
  */
 function baseParams(overrides) {
-  const reportId = overrides.report_id || getSetting('default_report_id');
-  const brand    = overrides.brand      || getSetting('default_brand_name');
+  const reportId = overrides.report_id || config.defaultReportId;
+  const brand    = overrides.brand      || config.defaultBrandName;
   const p = { prompts: 'custom', ...overrides };
   if (reportId) p.report_id = reportId;
   if (brand)    p.brand = brand;
@@ -161,8 +161,8 @@ export const sovHistoryConfig = {
 };
 
 export async function fetchSovHistory(overrides = {}, widgetId) {
-  const reportId = overrides.report_id || getSetting('default_report_id');
-  const brand    = overrides.brand      || getSetting('default_brand_name');
+  const reportId = overrides.report_id || config.defaultReportId;
+  const brand    = overrides.brand      || config.defaultBrandName;
   const p = { prompts: 'custom', data_source: 'chatgpt,gemini,perplexity,copilot', select: 'share_of_voice,date', ...overrides };
   if (reportId) p.report_id = reportId;
   if (brand)    p.brand = brand;
@@ -181,8 +181,8 @@ export const impressionsHistoryConfig = {
 };
 
 export async function fetchImpressionsHistory(overrides = {}, widgetId) {
-  const reportId = overrides.report_id || getSetting('default_report_id');
-  const brand    = overrides.brand      || getSetting('default_brand_name');
+  const reportId = overrides.report_id || config.defaultReportId;
+  const brand    = overrides.brand      || config.defaultBrandName;
   const results  = await Promise.allSettled(
     PLATFORMS.map(ds => {
       const p = { prompts: 'custom', data_source: ds, ...overrides };

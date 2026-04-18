@@ -1,43 +1,26 @@
 import { Router } from 'express';
-import { getAllSettings, setSetting, getAllWidgets, updateWidgetParams, getWidget, safeParseJson } from '../db/db.js';
-import { restartCron } from '../scheduler/cron.js';
-import cron from 'node-cron';
+import { getAllWidgets, updateWidgetParams, getWidget, safeParseJson } from '../db/db.js';
+import { config } from '../config.js';
 
 const router = Router();
 
-// ── Global settings ─────────────────────────────────────────────────────────
+// ── Global settings (read-only — sourced from .env) ─────────────────────────
 
 router.get('/', (req, res) => {
-  const settings = getAllSettings();
-  if (settings.ahrefs_api_key) settings.ahrefs_api_key = '[set]';
+  const settings = {
+    default_project_id:                config.defaultProjectId,
+    default_web_analytics_project_id:  config.defaultWebAnalyticsProjectId,
+    default_report_id:                 config.defaultReportId,
+    default_domain:              config.defaultDomain,
+    default_brand_name:          config.defaultBrandName,
+    default_country:             config.defaultCountry,
+    default_competitors_domains: config.defaultCompetitorDomains.join(','),
+    cron_schedule:               config.cronSchedule,
+    timeout_ms:                  String(config.timeoutMs),
+    ahrefs_api_key:              config.ahrefsApiKey ? '[set]' : ''
+  };
   const widgets = getAllWidgets();
   res.json({ settings, widgets });
-});
-
-router.post('/', (req, res) => {
-  // Validate cron expression before persisting
-  if ('cron_schedule' in req.body && !cron.validate(req.body.cron_schedule)) {
-    return res.status(400).json({ error: `Invalid cron expression: "${req.body.cron_schedule}"` });
-  }
-
-  const allowed = [
-    'default_project_id', 'default_report_id', 'default_domain',
-    'default_brand_name', 'default_country', 'default_competitors_domains',
-    'cron_schedule', 'timeout_ms'
-  ];
-  for (const key of allowed) {
-    if (key in req.body) setSetting(key, req.body[key]);
-  }
-  // Also allow setting ahrefs_api_key if explicitly provided
-  if ('ahrefs_api_key' in req.body) {
-    setSetting('ahrefs_api_key', req.body.ahrefs_api_key);
-  }
-  if ('cron_schedule' in req.body) {
-    restartCron(req.body.cron_schedule);
-  }
-  const saved = getAllSettings();
-  if (saved.ahrefs_api_key) saved.ahrefs_api_key = '[set]';
-  res.json({ ok: true, settings: saved });
 });
 
 // ── Per-widget param overrides ──────────────────────────────────────────────

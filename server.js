@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { getDb, setSetting, getSetting } from './db/db.js';
+import { getDb } from './db/db.js';
 import { seedWidgets } from './api/widgets-registry.js';
 import { startCron } from './scheduler/cron.js';
 import apiRouter from './routes/api.js';
@@ -16,18 +16,6 @@ const PORT = process.env.PORT || 3000;
 // Initialise DB and seed widgets
 getDb();
 seedWidgets();
-
-// Seed API key from env only if not already configured in DB (DB wins after first run)
-if (process.env.AHREFS_API_KEY && !getSetting('ahrefs_api_key')) {
-  setSetting('ahrefs_api_key', process.env.AHREFS_API_KEY);
-}
-if (process.env.TIMEOUT_MS && !getSetting('timeout_ms')) {
-  setSetting('timeout_ms', process.env.TIMEOUT_MS);
-}
-// Seed default_country if not yet configured
-if (!getSetting('default_country')) {
-  setSetting('default_country', 'us');
-}
 
 // Start scheduler
 startCron();

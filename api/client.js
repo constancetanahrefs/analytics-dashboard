@@ -1,4 +1,5 @@
-import { logFetch, getSetting } from '../db/db.js';
+import { logFetch } from '../db/db.js';
+import { config } from '../config.js';
 
 const BASE_URL = 'https://api.ahrefs.com/v3';
 
@@ -26,12 +27,11 @@ class ApiError extends Error {
  * @returns {Promise<object>} parsed JSON response
  */
 export async function ahrefsGet(endpoint, params = {}, widgetId = null) {
-  // DB is the source of truth at runtime; env is the bootstrap fallback
-  const apiKey = getSetting('ahrefs_api_key') || process.env.AHREFS_API_KEY;
+  const apiKey = config.ahrefsApiKey;
   if (!apiKey) {
-    throw new Error('AHREFS_API_KEY is not configured. Set it in .env or the Settings page.');
+    throw new Error('AHREFS_API_KEY is not configured. Set it in your .env file.');
   }
-  const timeoutMs = parseInt(getSetting('timeout_ms') || process.env.TIMEOUT_MS || '30000', 10);
+  const timeoutMs = config.timeoutMs;
 
   const url = new URL(`${BASE_URL}/${endpoint}`);
   for (const [k, v] of Object.entries(params)) {

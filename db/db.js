@@ -18,21 +18,6 @@ export function getDb() {
   return _db;
 }
 
-// Settings helpers
-export function getSetting(key) {
-  const row = getDb().prepare('SELECT value FROM settings WHERE key = ?').get(key);
-  return row ? row.value : null;
-}
-
-export function setSetting(key, value) {
-  getDb().prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(key, value);
-}
-
-export function getAllSettings() {
-  const rows = getDb().prepare('SELECT key, value FROM settings').all();
-  return Object.fromEntries(rows.map(r => [r.key, r.value]));
-}
-
 /** Parse JSON safely, returning fallback (default {}) on any error. */
 export function safeParseJson(str, fallback = {}) {
   if (!str) return fallback;

@@ -1,8 +1,8 @@
 import { ahrefsGet } from '../client.js';
-import { getSetting } from '../../db/db.js';
+import { config } from '../../config.js';
 
 function defaultTarget(overrides) {
-  return overrides.target || getSetting('default_domain');
+  return overrides.target || config.defaultDomain;
 }
 
 function today() {

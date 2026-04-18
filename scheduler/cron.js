@@ -1,5 +1,6 @@
 import cron from 'node-cron';
-import { getAllWidgets, setCache, getSyncState, updateSyncState, getSetting, safeParseJson } from '../db/db.js';
+import { getAllWidgets, setCache, getSyncState, updateSyncState, safeParseJson } from '../db/db.js';
+import { config } from '../config.js';
 import { getFetcher } from '../api/widgets-registry.js';
 
 let cronTask = null;
@@ -71,7 +72,7 @@ export async function resumeSync() {
  * Default: 0 2 * * * (2am daily)
  */
 export function startCron() {
-  const schedule = getSetting('cron_schedule') || '0 2 * * *';
+  const schedule = config.cronSchedule;
   if (cronTask) cronTask.stop();
   if (!cron.validate(schedule)) {
     console.warn(`[scheduler] Invalid cron expression "${schedule}", using default 0 2 * * *`);

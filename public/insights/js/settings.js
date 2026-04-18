@@ -4,55 +4,18 @@
  * and per-widget param overrides.
  */
 
+// Global fields are read-only — sourced from server .env file
 const GLOBAL_FIELDS = [
-  {
-    key: 'default_project_id',
-    label: 'Project ID',
-    placeholder: 'e.g. 12345',
-    tip: 'Used by GSC, Rank Tracker, and Web Analytics widgets as the default project_id parameter.'
-  },
-  {
-    key: 'default_report_id',
-    label: 'Brand Radar Report ID',
-    placeholder: 'e.g. 67890',
-    tip: 'Used by all Brand Radar widgets (AI SoV, Impressions, Cited Pages). Find it in your Ahrefs Brand Radar report URL.'
-  },
-  {
-    key: 'default_brand_name',
-    label: 'Brand Name',
-    placeholder: 'e.g. Acme Corp',
-    tip: 'Required by brand-radar/impressions-history. Also used to filter branded keywords in GSC widgets.'
-  },
-  {
-    key: 'default_domain',
-    label: 'Domain',
-    placeholder: 'e.g. acme.com',
-    tip: 'Your own domain — used to exclude your URLs from 3rd-party competitor tables (o1, o2 widgets).'
-  },
-  {
-    key: 'default_competitors_domains',
-    label: 'Competitor Domains (comma-separated)',
-    placeholder: 'e.g. semrush.com,moz.com,ahrefs.com',
-    tip: 'Competitor domains to exclude from the 3rd-Party Domains — AI Search widget (o1). Comma-separated, e.g. semrush.com,moz.com'
-  },
-  {
-    key: 'default_country',
-    label: 'Country',
-    placeholder: 'e.g. us',
-    tip: 'Applied as the "country" parameter to rank-tracker/serp-overview calls (PAA, Discussions, Videos widgets). Use ISO 2-letter code.'
-  },
-  {
-    key: 'ahrefs_api_key',
-    label: 'Ahrefs API Key',
-    placeholder: '••••••••',
-    tip: 'Your Ahrefs API v3 key. Overrides the AHREFS_API_KEY environment variable set on the server.'
-  },
-  {
-    key: 'timeout_ms',
-    label: 'Request Timeout (ms)',
-    placeholder: '30000',
-    tip: 'Maximum milliseconds before an API request is cancelled and logged as a timeout. Default: 30000.'
-  }
+  { key: 'ahrefs_api_key',             label: 'Ahrefs API Key',                    envVar: 'AHREFS_API_KEY' },
+  { key: 'default_project_id',              label: 'Project ID (GSC & Rank Tracker)',   envVar: 'DEFAULT_PROJECT_ID' },
+  { key: 'default_web_analytics_project_id', label: 'Project ID (Web Analytics)',        envVar: 'DEFAULT_WEB_ANALYTICS_PROJECT_ID' },
+  { key: 'default_report_id',               label: 'Brand Radar Report ID',             envVar: 'DEFAULT_REPORT_ID' },
+  { key: 'default_brand_name',         label: 'Brand Name',                        envVar: 'DEFAULT_BRAND_NAME' },
+  { key: 'default_domain',             label: 'Domain',                            envVar: 'DEFAULT_DOMAIN' },
+  { key: 'default_competitors_domains',label: 'Competitor Domains',                envVar: 'DEFAULT_COMPETITORS_DOMAINS' },
+  { key: 'default_country',            label: 'Country',                           envVar: 'DEFAULT_COUNTRY' },
+  { key: 'cron_schedule',              label: 'Cron Schedule',                     envVar: 'CRON_SCHEDULE' },
+  { key: 'timeout_ms',                 label: 'Request Timeout (ms)',              envVar: 'TIMEOUT_MS' }
 ];
 
 // Per-widget overrideable params
@@ -97,38 +60,40 @@ function renderSettingsPanel() {
   const body = document.getElementById('settings-body');
   body.innerHTML = '';
 
-  // ── Global Settings ────────────────────────────────────────────────────────
+  // ── Global Settings (read-only — configured in .env) ──────────────────────
   const globalSection = document.createElement('div');
   globalSection.className = 'settings-section';
-  globalSection.innerHTML = '<h3>Global Settings</h3>';
+
+  const globalHeader = document.createElement('h3');
+  globalHeader.textContent = 'Global Settings';
+  globalSection.appendChild(globalHeader);
+
+  const globalNote = document.createElement('p');
+  globalNote.style.cssText = 'font-size:12px;color:var(--text-muted);margin-bottom:12px';
+  globalNote.textContent = 'These values are set in your server\'s .env file. Edit .env and restart the server to change them.';
+  globalSection.appendChild(globalNote);
 
   for (const field of GLOBAL_FIELDS) {
     const group = document.createElement('div');
     group.className = 'form-group';
 
-    const isKey = field.key === 'ahrefs_api_key';
-    const currentVal = _state.settings[field.key] || '';
+    const label = document.createElement('label');
+    label.textContent = field.label;
 
-    group.innerHTML = `
-      <label>
-        ${field.label}
-        <span class="endpoint-tip" title="${escHtml(field.tip)}">ℹ</span>
-      </label>
-      <input type="${isKey ? 'password' : 'text'}"
-             id="gs-${field.key}"
-             placeholder="${field.placeholder}"
-             value="${escHtml(isKey ? '' : currentVal)}"
-             autocomplete="off">
-    `;
+    const envBadge = document.createElement('code');
+    envBadge.style.cssText = 'font-size:10px;margin-left:6px;color:var(--text-muted)';
+    envBadge.textContent = field.envVar;
+    label.appendChild(envBadge);
+
+    const val = _state.settings[field.key] || '';
+    const display = document.createElement('div');
+    display.style.cssText = 'font-size:13px;padding:6px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:' + (val ? 'var(--text)' : 'var(--text-muted)');
+    display.textContent = val || '(not set)';
+
+    group.appendChild(label);
+    group.appendChild(display);
     globalSection.appendChild(group);
   }
-
-  const saveGlobalBtn = document.createElement('button');
-  saveGlobalBtn.className = 'btn primary sm';
-  saveGlobalBtn.style.marginTop = '8px';
-  saveGlobalBtn.textContent = 'Save Global Settings';
-  saveGlobalBtn.addEventListener('click', saveGlobalSettings);
-  globalSection.appendChild(saveGlobalBtn);
 
   body.appendChild(globalSection);
 
@@ -175,33 +140,6 @@ function renderSettingsPanel() {
   }
 
   body.appendChild(overrideSection);
-}
-
-async function saveGlobalSettings() {
-  const updates = {};
-  for (const field of GLOBAL_FIELDS) {
-    const el = document.getElementById(`gs-${field.key}`);
-    if (!el) continue;
-    const val = el.value.trim();
-    // Skip empty API key (never clear it via blank field — use a dedicated reset)
-    if (field.key === 'ahrefs_api_key' && !val) continue;
-    updates[field.key] = val;
-  }
-
-  try {
-    const res = await fetch('/api/settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updates)
-    });
-    if (!res.ok) throw new Error('Save failed');
-    // Update in-memory state
-    Object.assign(_state.settings, updates);
-    showToast('✓ Settings saved');
-    document.dispatchEvent(new CustomEvent('insights:settings-change'));
-  } catch (err) {
-    showToast('Failed to save: ' + err.message, '#f87171');
-  }
 }
 
 async function saveWidgetOverride(widgetId, row) {

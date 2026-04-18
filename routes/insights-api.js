@@ -3,8 +3,9 @@ import {
   getAllInsightsWidgets, getInsightsWidget,
   setInsightsWidgetStar, setInsightsWidgetParams,
   getInsightsCached, setInsightsCache,
-  getAllSettings, safeParseJson
+  safeParseJson
 } from '../db/db.js';
+import { config } from '../config.js';
 import { getInsightsFetcher, getInsightsWidgetMeta } from '../api/insights-registry.js';
 
 const router = Router();
@@ -14,11 +15,20 @@ router.get('/widgets', (req, res) => {
   res.json(getAllInsightsWidgets());
 });
 
-// ── Global settings ───────────────────────────────────────────────────────────
+// ── Global settings (read-only — sourced from .env at startup) ────────────────
 router.get('/settings', (req, res) => {
-  const settings = getAllSettings();
-  if (settings.ahrefs_api_key) settings.ahrefs_api_key = '[set]';
-  res.json(settings);
+  res.json({
+    default_project_id:                config.defaultProjectId,
+    default_web_analytics_project_id:  config.defaultWebAnalyticsProjectId,
+    default_report_id:                 config.defaultReportId,
+    default_domain:              config.defaultDomain,
+    default_brand_name:          config.defaultBrandName,
+    default_country:             config.defaultCountry,
+    default_competitors_domains: config.defaultCompetitorDomains.join(','),
+    cron_schedule:               config.cronSchedule,
+    timeout_ms:                  String(config.timeoutMs),
+    ahrefs_api_key:              config.ahrefsApiKey ? '[set]' : ''
+  });
 });
 
 // ── Data fetch (cached) ───────────────────────────────────────────────────────

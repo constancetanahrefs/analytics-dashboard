@@ -1,12 +1,12 @@
 import { ahrefsGet } from '../client.js';
-import { getSetting } from '../../db/db.js';
+import { config } from '../../config.js';
 
 function defaultProjectId(overrides) {
-  return overrides.project_id || getSetting('default_project_id');
+  return overrides.project_id || config.defaultProjectId;
 }
 
 function defaultCountry(overrides) {
-  return overrides.country || getSetting('default_country') || 'us';
+  return overrides.country || config.defaultCountry;
 }
 
 function today() {
@@ -270,9 +270,8 @@ export const aioGapUrlsConfig = {
 };
 
 export async function fetchAioGapUrls(overrides = {}, widgetId) {
-  const ownDomain = overrides.domain || getSetting('default_domain') || '';
-  const competitorDomains = (getSetting('default_competitors_domains') || '')
-    .split(',').map(s => s.trim()).filter(Boolean);
+  const ownDomain = overrides.domain || config.defaultDomain;
+  const competitorDomains = config.defaultCompetitorDomains;
   const excludeDomains = [ownDomain, ...competitorDomains].filter(Boolean);
 
   const overviewData = await fetchOverview({

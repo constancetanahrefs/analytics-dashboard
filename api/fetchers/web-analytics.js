@@ -1,8 +1,8 @@
 import { ahrefsGet } from '../client.js';
-import { getSetting } from '../../db/db.js';
+import { config } from '../../config.js';
 
 function defaultProjectId(overrides) {
-  return overrides.project_id || getSetting('default_project_id');
+  return overrides.project_id || config.defaultWebAnalyticsProjectId || config.defaultProjectId;
 }
 
 function isoTimestamp(n) {

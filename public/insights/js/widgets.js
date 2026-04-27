@@ -1215,13 +1215,17 @@ function renderSerpFeaturesTable(body, data, type) {
   if (data.error) { body.appendChild(errorEl(data.error, data.httpCode)); return; }
   const results = data.results || [];
   const rows = [];
-  const seenUrls = new Set();
+  const seenUrls   = new Set();
+  const seenTitles = new Set(); // PAA items have no URL — deduplicate by question text
   for (const r of results) {
     for (const item of (r.items || [])) {
-      const url = item.url || '';
-      if (url && seenUrls.has(url)) continue;
-      if (url) seenUrls.add(url);
-      rows.push({ keyword: r.keyword, position: r.position, title: item.title || '', url });
+      const url   = item.url || '';
+      const title = (item.title || '').trim();
+      if (url   && seenUrls.has(url))     continue;
+      if (!url  && title && seenTitles.has(title)) continue;
+      if (url)   seenUrls.add(url);
+      if (!url && title) seenTitles.add(title);
+      rows.push({ keyword: r.keyword, position: r.position, title, url });
     }
   }
 

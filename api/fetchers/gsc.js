@@ -12,6 +12,18 @@ function dateFrom(daysBack = 90) {
   return d.toISOString().slice(0, 10);
 }
 
+/**
+ * Strip non-GSC date params from overrides.
+ * buildDateOverrides() in the insights frontend sends { date, date_from, date_to, from, to }
+ * to every widget. GSC endpoints only accept date_from / date_to (YYYY-MM-DD strings).
+ * Sending `from`, `to` (ISO timestamps) or `date` (single snapshot date) causes HTTP 500.
+ */
+function gscOverrides(overrides) {
+  // eslint-disable-next-line no-unused-vars
+  const { date, from, to, ...rest } = overrides;
+  return rest;
+}
+
 // ---------------------------------------------------------------------------
 // Performance History (clicks, impressions, position over time)
 // ---------------------------------------------------------------------------
@@ -21,11 +33,12 @@ export const performanceHistoryConfig = {
 };
 
 export async function fetchPerformanceHistory(overrides = {}, widgetId) {
-  const projectId = defaultProjectId(overrides);
+  const clean = gscOverrides(overrides);
+  const projectId = defaultProjectId(clean);
   const params = {
     date_from: dateFrom(90),
     history_grouping: 'daily',
-    ...overrides,
+    ...clean,
     project_id: projectId
   };
   return ahrefsGet('gsc/performance-history', params, widgetId);
@@ -40,10 +53,11 @@ export const positionsHistoryConfig = {
 };
 
 export async function fetchPositionsHistory(overrides = {}, widgetId) {
-  const projectId = defaultProjectId(overrides);
+  const clean = gscOverrides(overrides);
+  const projectId = defaultProjectId(clean);
   const params = {
     date_from: dateFrom(365),
-    ...overrides,
+    ...clean,
     project_id: projectId
   };
   return ahrefsGet('gsc/positions-history', params, widgetId);
@@ -58,10 +72,11 @@ export const performanceByPositionConfig = {
 };
 
 export async function fetchPerformanceByPosition(overrides = {}, widgetId) {
-  const projectId = defaultProjectId(overrides);
+  const clean = gscOverrides(overrides);
+  const projectId = defaultProjectId(clean);
   const params = {
     date_from: dateFrom(90),
-    ...overrides,
+    ...clean,
     project_id: projectId
   };
   return ahrefsGet('gsc/performance-by-position', params, widgetId);
@@ -76,12 +91,13 @@ export const keywordsConfig = {
 };
 
 export async function fetchKeywords(overrides = {}, widgetId) {
-  const projectId = defaultProjectId(overrides);
+  const clean = gscOverrides(overrides);
+  const projectId = defaultProjectId(clean);
   const params = {
     order_by: 'impressions:desc',
     date_from: dateFrom(90),
     limit: 100,
-    ...overrides,
+    ...clean,
     project_id: projectId
   };
   return ahrefsGet('gsc/keywords', params, widgetId);
@@ -112,7 +128,8 @@ export const questionKeywordsConfig = {
 };
 
 export async function fetchQuestionKeywords(overrides = {}, widgetId) {
-  const projectId = defaultProjectId(overrides);
+  const clean = gscOverrides(overrides);
+  const projectId = defaultProjectId(clean);
   const where = JSON.stringify({
     and: [
       {
@@ -127,7 +144,7 @@ export async function fetchQuestionKeywords(overrides = {}, widgetId) {
     order_by: 'impressions:desc',
     date_from: dateFrom(90),
     limit: 500,
-    ...overrides,
+    ...clean,
     project_id: projectId,
     where
   };
@@ -143,12 +160,13 @@ export const pagesConfig = {
 };
 
 export async function fetchPages(overrides = {}, widgetId) {
-  const projectId = defaultProjectId(overrides);
+  const clean = gscOverrides(overrides);
+  const projectId = defaultProjectId(clean);
   const params = {
     order_by: 'impressions:desc',
     date_from: dateFrom(90),
     limit: 50,
-    ...overrides,
+    ...clean,
     project_id: projectId
   };
   const data = await ahrefsGet('gsc/pages', params, widgetId);
@@ -196,12 +214,13 @@ export const longTailKeywordsConfig = {
 };
 
 export async function fetchLongTailKeywords(overrides = {}, widgetId) {
-  const projectId = defaultProjectId(overrides);
+  const clean = gscOverrides(overrides);
+  const projectId = defaultProjectId(clean);
   const params = {
     order_by: 'impressions:desc',
     date_from: dateFrom(90),
     limit: 500,
-    ...overrides,
+    ...clean,
     project_id: projectId
   };
   const data = await ahrefsGet('gsc/keywords', params, widgetId);

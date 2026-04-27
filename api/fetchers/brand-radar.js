@@ -206,7 +206,7 @@ export async function fetchImpressionsHistory(overrides = {}, widgetId) {
 // ---------------------------------------------------------------------------
 export const videoCitedPagesConfig = {
   endpoint: 'brand-radar/cited-pages',
-  params: { prompts: 'custom', data_source: 'chatgpt|gemini|perplexity|copilot', note: 'Filtered server-side for youtube.com and tiktok.com' }
+  params: { prompts: 'custom', data_source: 'chatgpt,gemini,perplexity,copilot', note: 'Fetches all cited pages; youtube.com and tiktok.com filtered client-side.' }
 };
 
 const VIDEO_DOMAINS = ['youtube', 'tiktok'];
@@ -216,11 +216,14 @@ export async function fetchVideoCitedPages(overrides = {}, widgetId) {
     ...baseParams(overrides),
     data_source: 'chatgpt,gemini,perplexity,copilot',
     select: 'url,responses',
-    limit: 25,
+    limit: 100,
     date: overrides.date || new Date().toISOString().slice(0, 10)
   };
-  p.where = JSON.stringify({ field: 'cited_url_exact', is: ['substring', VIDEO_DOMAINS] });
-  return ahrefsGet('brand-radar/cited-pages', p, widgetId);
+  const data = await ahrefsGet('brand-radar/cited-pages', p, widgetId);
+  const pages = (data.pages || []).filter(page =>
+    VIDEO_DOMAINS.some(d => page.url?.includes(d))
+  );
+  return { ...data, pages };
 }
 
 // ---------------------------------------------------------------------------
@@ -228,7 +231,7 @@ export async function fetchVideoCitedPages(overrides = {}, widgetId) {
 // ---------------------------------------------------------------------------
 export const discussionCitedPagesConfig = {
   endpoint: 'brand-radar/cited-pages',
-  params: { prompts: 'custom', data_source: 'chatgpt|gemini|perplexity|copilot', note: 'Filtered server-side for reddit.com and quora.com' }
+  params: { prompts: 'custom', data_source: 'chatgpt|gemini|perplexity|copilot', note: 'Fetches all cited pages per platform; reddit.com and quora.com filtered client-side.' }
 };
 
 const DISCUSSION_DOMAINS = ['reddit', 'quora'];
@@ -240,18 +243,21 @@ export async function fetchDiscussionCitedPages(overrides = {}, widgetId) {
         ...baseParams(overrides),
         data_source: ds,
         select: 'url,responses',
-        limit: 25,
+        limit: 100,
         date: overrides.date || new Date().toISOString().slice(0, 10)
       };
-      p.where = JSON.stringify({ field: 'cited_url_exact', is: ['substring', DISCUSSION_DOMAINS] });
       return ahrefsGet('brand-radar/cited-pages', p, widgetId);
     })
   );
   return Object.fromEntries(
-    PLATFORMS.map((ds, i) => [
-      ds,
-      results[i].status === 'fulfilled' ? results[i].value : { error: results[i].reason?.message }
-    ])
+    PLATFORMS.map((ds, i) => {
+      if (results[i].status === 'rejected') return [ds, { error: results[i].reason?.message }];
+      const data = results[i].value;
+      const pages = (data.pages || []).filter(page =>
+        DISCUSSION_DOMAINS.some(d => page.url?.includes(d))
+      );
+      return [ds, { ...data, pages }];
+    })
   );
 }
 

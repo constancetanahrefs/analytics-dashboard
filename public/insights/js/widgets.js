@@ -282,6 +282,7 @@ function renderBody(id, card, uiMeta, data, appState) {
 function buildDateOverrides(appState) {
   if (!appState.dateFrom && !appState.dateTo) return {};
   return {
+    date:      appState.dateTo,   // brand-radar snapshot date (primary/end date)
     date_from: appState.dateFrom,
     date_to:   appState.dateTo,
     from:      appState.dateFrom ? appState.dateFrom + 'T00:00:00.000Z' : undefined,

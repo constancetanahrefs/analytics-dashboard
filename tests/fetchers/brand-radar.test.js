@@ -162,3 +162,63 @@ describe('o9-video-ai: fetchVideoCitedPages', () => {
     }
   });
 });
+
+// ── Date param isolation (regression for "date_to must be greater than date_from") ─────
+// buildDateOverrides() in public/insights/js/widgets.js sends all 4 date params
+// (date_from, date_to, from, to) to EVERY insights widget, including brand-radar
+// snapshot fetchers. This test confirms that snapshot fetchers do NOT pass those
+// GSC/web-analytics-style range params through to the Ahrefs API.
+describe('brand-radar snapshot date param isolation', () => {
+  it('fetchThirdPartyDomains ignores date_from/date_to/from/to — no API error', async () => {
+    const s = SCENARIOS.default;
+    // Simulate exactly what buildDateOverrides() sends for all insights widgets
+    const overrides = {
+      date:      s.dateTo,
+      date_from: s.dateFrom,
+      date_to:   s.dateTo,
+      from:      s.dateFrom + 'T00:00:00.000Z',
+      to:        s.dateTo   + 'T23:59:59.000Z'
+    };
+    const data = await fetchThirdPartyDomains(overrides, WIDGET);
+    assert.ok(
+      !data.error,
+      `fetchThirdPartyDomains errored with buildDateOverrides-style params: ${data.error}`
+    );
+    assert.ok(Array.isArray(data.domains), `should still return domains array, got: ${JSON.stringify(Object.keys(data))}`);
+  });
+
+  it('fetchDiscussionCitedPages ignores date_from/date_to/from/to — no platform errors', async () => {
+    const s = SCENARIOS.default;
+    const overrides = {
+      date:      s.dateTo,
+      date_from: s.dateFrom,
+      date_to:   s.dateTo,
+      from:      s.dateFrom + 'T00:00:00.000Z',
+      to:        s.dateTo   + 'T23:59:59.000Z'
+    };
+    const data = await fetchDiscussionCitedPages(overrides, WIDGET);
+    const errors = Object.entries(data)
+      .filter(([, v]) => v?.error)
+      .map(([k, v]) => `${k}: ${v.error}`);
+    assert.ok(
+      errors.length === 0,
+      `fetchDiscussionCitedPages had platform errors with buildDateOverrides-style params: ${errors.join(' · ')}`
+    );
+  });
+
+  it('fetchVideoCitedPages ignores date_from/date_to/from/to — no API error', async () => {
+    const s = SCENARIOS.default;
+    const overrides = {
+      date:      s.dateTo,
+      date_from: s.dateFrom,
+      date_to:   s.dateTo,
+      from:      s.dateFrom + 'T00:00:00.000Z',
+      to:        s.dateTo   + 'T23:59:59.000Z'
+    };
+    const data = await fetchVideoCitedPages(overrides, WIDGET);
+    assert.ok(
+      !data.error,
+      `fetchVideoCitedPages errored with buildDateOverrides-style params: ${data.error}`
+    );
+  });
+});

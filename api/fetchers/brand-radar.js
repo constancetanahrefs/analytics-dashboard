@@ -10,14 +10,23 @@ function daysAgoDate(n) {
 }
 
 /**
- * Build base params shared by all Brand Radar calls.
+ * Build base params shared by all Brand Radar SNAPSHOT calls.
  * - `prompts: 'custom'` (plural — API requirement)
  * - `brand` read from settings (required by API; at least one of brand/competitors/market/where must be set)
+ *
+ * Strips date_from / date_to / from / to — those are GSC/web-analytics-style range params.
+ * Brand Radar snapshot endpoints only accept a single `date` param. Passing range params
+ * causes Ahrefs API validation errors when date_to < date_from (e.g. user enters dates
+ * in wrong order in the date picker).
+ * History fetchers (fetchSovHistory, fetchImpressionsHistory) do NOT use baseParams;
+ * they handle date_from/date_to directly so they are unaffected by this strip.
  */
 function baseParams(overrides) {
-  const reportId = overrides.report_id || config.defaultReportId;
-  const brand    = overrides.brand      || config.defaultBrandName;
-  const p = { prompts: 'custom', ...overrides };
+  // eslint-disable-next-line no-unused-vars
+  const { date_from, date_to, from, to, ...rest } = overrides;
+  const reportId = rest.report_id || config.defaultReportId;
+  const brand    = rest.brand      || config.defaultBrandName;
+  const p = { prompts: 'custom', ...rest };
   if (reportId) p.report_id = reportId;
   if (brand)    p.brand = brand;
   return p;

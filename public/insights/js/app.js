@@ -64,9 +64,20 @@ async function init() {
 
   // ── Date apply ────────────────────────────────────────────────────────────
   document.getElementById('btn-apply-dates').addEventListener('click', () => {
-    state.dateTo   = document.getElementById('dp-primary').value;
-    state.dateFrom = document.getElementById('dp-compare').value;
-    if (!state.dateTo || !state.dateFrom) return;
+    const primary = document.getElementById('dp-primary').value;
+    const compare = document.getElementById('dp-compare').value;
+    if (!primary || !compare) return;
+    if (primary < compare) {
+      // Primary (current period) must be on or after compare (baseline) date.
+      // Swapping silently is more forgiving than blocking, but warn the user.
+      document.getElementById('dp-primary').value = compare;
+      document.getElementById('dp-compare').value = primary;
+      state.dateTo   = compare;
+      state.dateFrom = primary;
+    } else {
+      state.dateTo   = primary;
+      state.dateFrom = compare;
+    }
     clearWidgetCache();
     document.dispatchEvent(new CustomEvent('insights:date-change'));
   });
